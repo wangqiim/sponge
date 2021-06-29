@@ -3,7 +3,9 @@
 
 #include "byte_stream.hh"
 
+#include <algorithm>
 #include <cstdint>
+#include <map>
 #include <string>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
@@ -14,6 +16,14 @@ class StreamReassembler {
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+    bool _eof{};
+    uint64_t _next_assembled_index{0};
+    uint64_t _unassembled_bytes{0};
+    std::map<size_t, std::string> _unassembled_map;
+
+    void adjust_substring(std::string &adjusted_data, size_t &index, bool &eof);
+
+    void coalse_node(std::string &data, size_t &index);
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
@@ -46,6 +56,9 @@ class StreamReassembler {
     //! \brief Is the internal state empty (other than the output stream)?
     //! \returns `true` if no substrings are waiting to be assembled
     bool empty() const;
+
+    // debug
+    void print_details() const;
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH
