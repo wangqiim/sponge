@@ -36,10 +36,11 @@ string ByteStream::peek_output(const size_t len) const {
     }
     int buf_cap = this->_buf.size();
     std::string str;
+    str.resize(n);
     size_t i = this->_head;
+    size_t str_index = 0;
     while (n--) {
-        str.push_back(this->_buf[i]);
-        i++;
+        str[str_index++] = this->_buf[i++];
         i %= buf_cap;
     }
     return str;
@@ -67,9 +68,10 @@ std::string ByteStream::read(const size_t len) {
     this->_bytes_read += n;
     int buf_cap = this->_buf.size();
     std::string str;
+    str.resize(n);
+    size_t str_index = 0;
     while (n--) {
-        str.push_back(this->_buf[this->_head]);
-        this->_head++;
+        str[str_index++] = this->_buf[this->_head++];
         this->_head %= buf_cap;
     }
     return str;
