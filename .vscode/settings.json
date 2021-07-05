@@ -50,6 +50,7 @@
         "streambuf": "cpp",
         "typeinfo": "cpp",
         "bit": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "variant": "cpp"
     }
 }

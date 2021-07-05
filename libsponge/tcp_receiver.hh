@@ -8,6 +8,8 @@
 
 #include <optional>
 
+enum class TCPReceiverState { LISTEN, SYN_RECV, FIN_RECV, ERROR };
+
 //! \brief The "receiver" part of a TCP implementation.
 
 //! Receives and reassembles segments into a ByteStream, and computes
@@ -20,7 +22,11 @@ class TCPReceiver {
     //! The maximum number of bytes we'll store.
     size_t _capacity;
 
+    std::optional<WrappingInt32> _isn{};
+
   public:
+    TCPReceiverState state() const;
+
     //! \brief Construct a TCP receiver
     //!
     //! \param capacity the maximum number of bytes that the receiver will
