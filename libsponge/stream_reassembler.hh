@@ -16,12 +16,12 @@ class StreamReassembler {
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
-    bool _eof{};
+    std::optional<uint64_t> _eof_index{};
     uint64_t _next_assembled_index{0};
     uint64_t _unassembled_bytes{0};
     std::map<size_t, std::string> _unassembled_map;
 
-    void adjust_substring(std::string &adjusted_data, size_t &index, bool &eof);
+    void adjust_substring(std::string &adjusted_data, size_t &index);
 
     void coalse_node(std::string &data, size_t &index);
 

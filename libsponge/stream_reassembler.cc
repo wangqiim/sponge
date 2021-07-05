@@ -21,11 +21,12 @@ StreamReassembler::StreamReassembler(const size_t capacity)
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
+    if (eof)
+        this->_eof_index = index + data.size();
     std::string adjusted_data = data;
     size_t adjusted_index = index;
-    bool adjusted_eof = eof;
     // 1. adjust data, index and eof
-    this->adjust_substring(adjusted_data, adjusted_index, adjusted_eof);
+    this->adjust_substring(adjusted_data, adjusted_index);
     // 2 try to colase with sibling
     this->coalse_node(adjusted_data, adjusted_index);
     // 3. if begin of unressembler data index = _next_assembled_index, write it to _output
@@ -37,7 +38,8 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         this->_unassembled_map.erase(it);
     }
     // 4. if all data are assembled, end it
-    if (this->unassembled_bytes() == 0 && this->_eof) {
+    if (this->unassembled_bytes() == 0 && this->_eof_index.has_value() &&
+        this->_next_assembled_index == this->_eof_index.value()) {
         this->_output.end_input();
     }
 }
@@ -57,7 +59,7 @@ void StreamReassembler::print_details() const {
 }
 
 // private
-void StreamReassembler::adjust_substring(string &data, size_t &index, bool &eof) {
+void StreamReassembler::adjust_substring(string &data, size_t &index) {
     // 1. if index < _next_assembled_index, cut off begin
     if (index < this->_next_assembled_index) {
         size_t offset = this->_next_assembled_index - index;
@@ -70,12 +72,12 @@ void StreamReassembler::adjust_substring(string &data, size_t &index, bool &eof)
         }
     }
     // 2. if adjusted_data > right_bound, cut off end
+
     size_t right_bound = this->_output.remaining_capacity() + this->_next_assembled_index;
-    if (index + data.size() > right_bound) {
+    if (index > right_bound) {
+        data = "";
+    } else if (index + data.size() > right_bound) {
         data = data.substr(0, right_bound - index);
-        eof = false;
-    } else if (eof) {
-        this->_eof = true;
     }
 }
 
