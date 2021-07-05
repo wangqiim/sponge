@@ -9,6 +9,8 @@
 #include <functional>
 #include <queue>
 
+enum class TCPSenderState { CLOSED, SYN_SENT, SYN_ACKED, SYN_ACKED_ALSO, FIN_SENT, FIN_ACKED, ERROR };
+
 //! \brief The "sender" part of a TCP implementation.
 
 //! Accepts a ByteStream, divides it up into segments and sends the
@@ -32,7 +34,19 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
+    uint64_t _first_seqno_inflight{0};
+    uint16_t _window_size{1};
+    std::deque<std::pair<uint64_t, TCPSegment>> _in_flight_TCPSegment{};
+    // time
+    unsigned _retrans_timer{0};
+    unsigned int _retransmission_timeout;
+    unsigned int _consecutive_retransmissions{0};
+
+    void heart_beat();
+
   public:
+    TCPSenderState state() const;
+
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
               const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,
