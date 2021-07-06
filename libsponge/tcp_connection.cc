@@ -22,7 +22,8 @@ size_t TCPConnection::time_since_last_segment_received() const { return this->_t
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     // any ACK (in CONNECTSTATE::LISTEN) should result in a RST
-    if (this->_receiver.state() == TCPReceiverState::LISTEN && this->_sender.state() == TCPSenderState::CLOSED && seg.header().ack) {
+    if (this->_receiver.state() == TCPReceiverState::LISTEN && this->_sender.state() == TCPSenderState::CLOSED &&
+        seg.header().ack) {
         return;
     }
     this->_time_since_last_segment_received = 0;
@@ -36,7 +37,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         (this->_sender.state() == TCPSenderState::SYN_ACKED ||
          this->_sender.state() == TCPSenderState::SYN_ACKED_ALSO)) {
         this->_linger_after_streams_finish = false;
-    }    
+    }
     // 2. receive segment
     this->_receiver.segment_received(seg);
     // 3. tell sender [ackno, window]
