@@ -53,10 +53,14 @@ uint64_t TCPSender::bytes_in_flight() const {
 }
 
 void TCPSender::fill_window() {
-    // 1. if send zero bytes, return
-    size_t len = std::max(0UL, this->_window_size - this->bytes_in_flight());
-    if (len == 0)
+    if (this->state() == TCPSenderState::SYN_SENT || this->state() == TCPSenderState::FIN_SENT ||
+        this->state() == TCPSenderState::FIN_ACKED || this->state() == TCPSenderState::ERROR)
         return;
+    // 1. if send zero bytes, return (treat a '0' window size as equal to '1')
+    unsigned long long non_zero_window = std::max(1ULL, static_cast<unsigned long long>(this->_window_size));
+    if (non_zero_window <= this->bytes_in_flight())
+        return;
+    size_t len = non_zero_window - static_cast<unsigned long long>(this->bytes_in_flight());
     // 2. if state = closed, send syn
     TCPSegment seg;
     uint64_t index = this->next_seqno_absolute();
@@ -82,7 +86,7 @@ void TCPSender::fill_window() {
         this->_segments_out.push(seg);
     }
     // 6. if payload is not empty, try continue send a segment
-    if (seg.payload().size() > 0)
+    if (seg.payload().size() > 0 && this->_window_size != 0)
         this->fill_window();
 }
 
@@ -90,30 +94,47 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ackno = unwrap(ackno, this->_isn, this->_next_seqno);
-    if (this->_next_seqno < abs_ackno)  // Impossible ackno (beyond next seqno) is ignored
+    // 1. Impossible ackno (beyond next seqno) is ignored
+    if (this->_next_seqno < abs_ackno)
         return;
     this->_window_size = window_size;
-    if (this->_in_flight_TCPSegment.empty() || abs_ackno >= this->_in_flight_TCPSegment.front().first) {
+    // 2. check and ack _in_flight_TCPSegment
+    bool fresh_timer = false;
+    while (!this->_in_flight_TCPSegment.empty()) {
+        std::pair<uint64_t, TCPSegment> &index_seg_pair = this->_in_flight_TCPSegment.front();
+        if (abs_ackno < index_seg_pair.first + index_seg_pair.second.length_in_sequence_space())
+            break;
+        fresh_timer = true;
+        this->_in_flight_TCPSegment.pop_front();
+    }
+    // 3. whether fresh timer
+    if (this->_in_flight_TCPSegment.empty() || fresh_timer) {
         this->_retrans_timer = 0;
         this->_consecutive_retransmissions = 0;
         this->_retransmission_timeout = this->_initial_retransmission_timeout;
-    }
-    while (!this->_in_flight_TCPSegment.empty() && abs_ackno > this->_in_flight_TCPSegment.front().first) {
-        this->_in_flight_TCPSegment.pop_front();
     }
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
+    // 1. if in_flight_segment is empty, fresh timer, return
+    if (this->_in_flight_TCPSegment.empty()) {
+        this->_retrans_timer = 0;
+        this->_consecutive_retransmissions = 0;
+        this->_retransmission_timeout = this->_initial_retransmission_timeout;
+        return;
+    }
+    // 2. else inc _retrans_timer
     this->_retrans_timer += ms_since_last_tick;
+    // 3. if timeout, retrans first package in flight or send a heartbeat
     if (this->_retrans_timer >= this->_retransmission_timeout) {
         this->_retrans_timer = 0;
-        this->_consecutive_retransmissions++;
-        this->_retransmission_timeout *= 2;
-        if (this->_in_flight_TCPSegment.empty())
-            this->heart_beat();
-        else
-            this->_segments_out.push(this->_in_flight_TCPSegment.front().second);
+        // When filling window, treat a '0' window size as equal to '1' but don't back off RTO
+        if (this->_window_size != 0) {
+            this->_consecutive_retransmissions++;
+            this->_retransmission_timeout *= 2;
+        }
+        this->_segments_out.push(this->_in_flight_TCPSegment.front().second);
     }
 }
 
@@ -125,6 +146,9 @@ void TCPSender::send_empty_segment() {
     this->_segments_out.push(segment);
 }
 
+// unused function
+// I find if window == 0, linux socket will send a package
+// [seqno=(next_seqno-1) and empty payload heartbeat] instead of treating window is one(cs144pdf))
 void TCPSender::heart_beat() {
     if (this->state() == TCPSenderState::CLOSED || this->state() == TCPSenderState::ERROR)
         return;
