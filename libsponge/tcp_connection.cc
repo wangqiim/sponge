@@ -109,12 +109,11 @@ TCPConnection::~TCPConnection() {
 
 void TCPConnection::send_segment_pkg() {
     while (!this->_sender.segments_out().empty()) {
-        TCPSegment segment = std::move(this->_sender.segments_out().front());
+        this->_sender.segments_out().front().header().ack = this->_receiver.ackno().has_value();
+        this->_sender.segments_out().front().header().ackno = this->_receiver.ackno().value_or(WrappingInt32(0));
+        this->_sender.segments_out().front().header().win = static_cast<uint16_t>(this->_receiver.window_size());
+        this->_segments_out.push(this->_sender.segments_out().front());
         this->_sender.segments_out().pop();
-        segment.header().ack = this->_receiver.ackno().has_value();
-        segment.header().ackno = this->_receiver.ackno().value_or(WrappingInt32(0));
-        segment.header().win = static_cast<uint16_t>(this->_receiver.window_size());
-        this->_segments_out.push(segment);
     }
 }
 

@@ -95,9 +95,7 @@ void StreamReassembler::coalse_node(string &data, size_t &index) {
                     // <-----sub---->[][][][][][][][index i][][]
                     // [][][][][][][][][][][][][][]
                     // <---------data.size()------>
-                    for (size_t i = (data.size() - (it_right->first - index)); i < it_right->second.size(); i++) {
-                        data.push_back(it_right->second[i]);
-                    }
+                    data.append(it_right->second.substr(data.size() - (it_right->first - index)));
                 }
                 this->_unassembled_bytes -= it_right->second.size();
                 this->_unassembled_map.erase(it_right);
