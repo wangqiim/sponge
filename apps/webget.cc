@@ -16,7 +16,7 @@ void get_URL(const string &host, const string &path) {
     // Then you'll need to print out everything the server sends back,
     // (not just one call to read() -- everything) until you reach
     // the "eof" (end of file).
-    CS144TCPSocket sock1;
+    FullStackSocket sock1;
     sock1.connect(Address(host, "80"));
     std::string recv, send;
     send = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
