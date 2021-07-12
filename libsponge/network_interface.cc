@@ -32,10 +32,10 @@ NetworkInterface::NetworkInterface(const EthernetAddress &ethernet_address, cons
 //! (Note: the Address type can be converted to a uint32_t (raw 32-bit IP address) with the Address::ipv4_numeric() method.)
 void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Address &next_hop) {
     const uint32_t next_hop_ip = next_hop.ipv4_numeric();
-    if (dgram.header().dst == next_hop.ipv4_numeric()) {
-        std::cerr << "panic: send_datagram to myself" << std::endl;
-        exit(1);
-    }
+    // if (dgram.header().dst == next_hop.ipv4_numeric()) {
+    //     std::cerr << "panic: send_datagram to myself" << std::endl;
+    //     exit(1);
+    // }
     EthernetFrame frame;
     frame.header().src = this->_ethernet_address;
     auto it = this->_ip2mac_.find(next_hop_ip);

@@ -53,6 +53,7 @@
         "map": "cpp",
         "variant": "cpp",
         "thread": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "set": "cpp"
     }
 }
